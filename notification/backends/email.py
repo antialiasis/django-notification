@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, EmailMultiAlternatives
 
 from notification.backends.base import NotificationBackend
 
@@ -30,13 +30,20 @@ class EmailBackend(NotificationBackend):
 
         headers = kwargs.get('headers', {})
         headers.setdefault('Reply-To', settings.DEFAULT_FROM_EMAIL)
+        
+        html_content = self.render_message(notice_type.label, 'notification/email_body.html',
+                'full.html',
+                context)
 
-        EmailMessage(self.render_subject(notice_type.label, context),
+        msg = EmailMultiAlternatives(self.render_subject(notice_type.label, context),
                 self.render_message(notice_type.label,
                         'notification/email_body.txt',
                         'full.txt',
                         context),
-                kwargs.get('from_email') or settings.DEFAULT_FROM_EMAIL,
+                settings.DEFAULT_FROM_EMAIL,
                 [self.email_for_user(recipient)],
-                headers=headers).send()
+                headers=headers)
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+
         return True
